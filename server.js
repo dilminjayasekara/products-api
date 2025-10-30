@@ -288,3 +288,45 @@ app.delete("/api/suppliers/deleteAll/:id", (req, res, next) => {
 app.get("/", (req, res, next) => {
     res.json({ "message": "University of Moratuwa" })
 });
+
+const express = require('express');
+const db = require('./database'); // Adjust path if different
+
+const app = express();
+app.use(express.json()); // For parsing JSON bodies
+
+// Existing routes... (e.g., products)
+
+// Add this new POST route for customer registration
+app.post('/customers', (req, res) => {
+  const { name, address, email, dateOfBirth, gender, age, cardHolderName, cardNumber, expiryDate, cvv, timestamp } = req.body;
+
+  // Validation
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Invalid email format' });
+  }
+  if (!cardNumber || !/^\d{12}$/.test(cardNumber)) {
+    return res.status(400).json({ error: 'Credit card number must be exactly 12 digits' });
+  }
+  // Add more validations if needed (e.g., required fields check)
+  if (!name || !address || !dateOfBirth || !gender || !age || !cardHolderName || !expiryDate || !cvv) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Insert into DB
+  const stmt = db.prepare(`INSERT INTO customer (name, address, email, dateOfBirth, gender, age, cardHolderName, cardNumber, expiryDate, cvv, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  stmt.run([name, address, email, dateOfBirth, gender, age, cardHolderName, cardNumber, expiryDate, cvv, timestamp || new Date().toISOString().slice(0, 19).replace('T', ' ')], function(err) {
+    if (err) {
+      console.error(err);
+      return res.status(400).json({ error: 'Registration failed (e.g., duplicate email/card)' });
+    }
+    // Success: Get the generated ID (this.id is from SQLite callback)
+    res.status(201).json({ 
+      message: `customer ${name} has registered`, 
+      customerId: this.lastID 
+    });
+  });
+  stmt.finalize();
+});
+
+// Existing code... (e.g., app.listen(3000))
